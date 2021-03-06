@@ -7,7 +7,12 @@ from django.contrib.auth.admin import UserAdmin
 
 from .forms import CustomUserCreationForm, CustomUserChangeForm
 
-from .models import CustomUser
+from .models import CustomUser, UserProfile
+
+
+class UserProfileInline(admin.StackedInline):
+    model = UserProfile
+    can_delete = False
 
 
 class CustomUserAdmin(UserAdmin):
@@ -22,14 +27,16 @@ class CustomUserAdmin(UserAdmin):
     )
 
     add_fieldsets = (
-        (None,{
+        (None, {
             'classes': ('wide',),
             'fields': ('email', 'password1', 'password2', 'is_staff', 'is_active')
         }
          ),
     )
-    search_fields = ('email',)
+    list_display = ('email', 'first_name', 'last_name', 'is_staff')
+    search_fields = ('email', 'first_name', 'last_name')
     ordering = ('email',)
+    inlines = (UserProfileInline, )
 
 
 admin.site.register(CustomUser, CustomUserAdmin)
