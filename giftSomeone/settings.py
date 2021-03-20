@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'rest_auth',
+    'core',
 ]
 
 MIDDLEWARE = [
@@ -126,7 +127,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE =  'Asia/Calcutta'
+TIME_ZONE = 'Asia/Calcutta'
 
 USE_I18N = True
 
