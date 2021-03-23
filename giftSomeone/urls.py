@@ -19,6 +19,11 @@ from rest_framework.routers import DefaultRouter
 from core.urls import router as core_router
 from users.urls import router as user_router
 
+from django.conf import settings
+from django.conf.urls import url
+from django.views.static import serve
+
+
 router = DefaultRouter()
 router.registry.extend(core_router.registry)
 router.registry.extend(user_router.registry)
@@ -27,3 +32,10 @@ urlpatterns = [
     re_path(r'api/', include(router.urls))
     #include function allows referencing other URLConfs
 ]
+
+if settings.DEBUG:
+    urlpatterns += [
+        url(r'^media/(?P<path>.*)$', serve, {
+            'document_root': settings.MEDIA_ROOT,
+        }),
+    ]
