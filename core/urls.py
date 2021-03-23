@@ -7,4 +7,6 @@ from rest_framework_jwt.views import obtain_jwt_token,refresh_jwt_token
 router = routers.DefaultRouter()
 router.register('products/all', ProductViewSet)
 router.register('orders/all', OrderViewSet)
+router.register('categories', CategoryViewSet)
+router.register('labels', LabelViewSet)
 

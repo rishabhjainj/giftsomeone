@@ -22,9 +22,18 @@ class CategoriesSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class LabelsSerializer(serializers.ModelSerializer):
+    products = ProductSerializer(many=True, required=False)
+
+    class Meta:
+        model = Label
+        fields = '__all__'
+
+
 class OrderSerializer(serializers.ModelSerializer):
     products = OrderProductSerializer(many=True, required=False)
 
     class Meta:
         model = Order
         fields = '__all__'
+        extra_kwargs = {'owner': {'required': False}}
