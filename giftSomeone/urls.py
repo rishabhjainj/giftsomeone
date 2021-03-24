@@ -22,6 +22,7 @@ from users.urls import router as user_router
 from django.conf import settings
 from django.conf.urls import url
 from django.views.static import serve
+from rest_framework_jwt.views import obtain_jwt_token, refresh_jwt_token
 
 
 router = DefaultRouter()
@@ -29,7 +30,8 @@ router.registry.extend(core_router.registry)
 router.registry.extend(user_router.registry)
 urlpatterns = [
     path(r'admin/', admin.site.urls),
-    re_path(r'api/', include(router.urls))
+    re_path(r'api/', include(router.urls)),
+    url(r'^login/', obtain_jwt_token),
     #include function allows referencing other URLConfs
 ]
 

@@ -11,6 +11,7 @@ from django.utils import timezone
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
+    permission_classes = (IsAuthenticated,)
 
 
 class LabelViewSet(viewsets.ModelViewSet):
