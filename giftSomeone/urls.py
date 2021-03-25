@@ -30,7 +30,7 @@ router.registry.extend(core_router.registry)
 router.registry.extend(user_router.registry)
 urlpatterns = [
     path(r'admin/', admin.site.urls),
-    re_path(r'api/', include(router.urls)),
+    re_path('api/', include(router.urls)),
     url(r'^login/', obtain_jwt_token),
     #include function allows referencing other URLConfs
 ]

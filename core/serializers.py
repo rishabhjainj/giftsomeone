@@ -9,6 +9,8 @@ class ProductSerializer(serializers.ModelSerializer):
 
 
 class OrderProductSerializer(serializers.ModelSerializer):
+    product = ProductSerializer( required=False)
+
     class Meta:
         model = OrderProduct
         fields = '__all__'
@@ -36,4 +38,4 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = '__all__'
-        extra_kwargs = {'owner': {'required': False}}
+        extra_kwargs = {'owner': {'required': True}}
