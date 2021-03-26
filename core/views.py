@@ -13,6 +13,53 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     permission_classes = (IsAuthenticated,)
 
+    @action(detail=True, methods=['post'], )
+    def add_to_wishlist(self, request, pk=None):
+        if pk is None:
+            return Response({'product': 'Product is required'})
+        else:
+            product = Product.objects.get(pk=pk)
+        try:
+            wishlist_query_set = WishList.objects.all().filter(owner=request.user)
+            if wishlist_query_set.exists():
+                wishList = wishlist_query_set[0]
+                wishListProduct = WishListProduct.objects.create(product=product)
+                wishList.products.add(wishListProduct)
+                wishList.save()
+            else:
+                wishList = WishList.objects.create(owner=request.user)
+                wishListProduct = WishListProduct.objects.create(product=product)
+                wishList.products.add(wishListProduct)
+                wishList.save()
+            return Response({'wishList': 'Product added Successfully'})
+        except Exception as e:
+            print(e)
+            return Response({'product_id': 'product does not exist'})
+
+    @action(detail=True, methods=['post'], )
+    def remove_from_wishlist(self, request, pk=None):
+        if pk is None:
+            return Response({'product': 'Product is required'})
+        else:
+            product = Product.objects.get(pk=pk)
+        try:
+            wishlist_query_set = WishList.objects.all().filter(owner=request.user)
+            if wishlist_query_set.exists():
+                wishList = wishlist_query_set[0]
+                wishlist_products = wishList.products.filter(product=product)
+                if wishlist_products.exists():
+                    product_to_remove = wishlist_products[0]
+                    WishListProduct.objects.filter(pk=product_to_remove.id).delete()
+                    return Response({'wishlist': 'Product removed successfully.'})
+                else:
+                    return Response({'wishlist': 'Product does not exists'})
+
+            else:
+                return Response({'wishlist': 'No wishlist exists.'})
+        except Exception as e:
+            print(e)
+            return Response({'product_id': 'product does not exist'})
+
 
 class LabelViewSet(viewsets.ModelViewSet):
     queryset = Label.objects.all()
@@ -22,6 +69,17 @@ class LabelViewSet(viewsets.ModelViewSet):
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategoriesSerializer
+
+
+class WishListViewSet(viewsets.ModelViewSet):
+    queryset = WishList.objects.all()
+    serializer_class = WishListSerializer
+    permission_classes = (IsAuthenticated, )
+
+    def list(self, request):
+        queryset = WishList.objects.all().filter(owner=request.user)
+        serializer = WishListSerializer(queryset, many=True)
+        return Response(serializer.data)
 
 
 class OrderViewSet(viewsets.ModelViewSet):

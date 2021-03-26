@@ -39,3 +39,20 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = '__all__'
         extra_kwargs = {'owner': {'required': True}}
+
+
+class WishListProductSerializer(serializers.ModelSerializer):
+    product = ProductSerializer(required=False)
+
+    class Meta:
+        model = WishListProduct
+        fields = '__all__'
+
+
+class WishListSerializer(serializers.ModelSerializer):
+    products = WishListProductSerializer(many=True, required=False)
+
+    class Meta:
+        model = WishList
+        fields = '__all__'
+        extra_kwargs = {'owner': {'required': True}}
