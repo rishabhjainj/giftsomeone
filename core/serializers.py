@@ -9,7 +9,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
 
 class OrderProductSerializer(serializers.ModelSerializer):
-    product = ProductSerializer( required=False)
+    product = ProductSerializer(required=False)
 
     class Meta:
         model = OrderProduct
@@ -24,6 +24,12 @@ class CategoriesSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class BillingAddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BillingAddress
+        fields = '__all__'
+
+
 class LabelsSerializer(serializers.ModelSerializer):
     products = ProductSerializer(many=True, required=False)
 
@@ -34,6 +40,7 @@ class LabelsSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     products = OrderProductSerializer(many=True, required=False)
+    billing_address = BillingAddressSerializer(required=False)
 
     class Meta:
         model = Order

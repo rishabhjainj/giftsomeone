@@ -82,6 +82,17 @@ class WishListViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+class BillingAddressViewSet(viewsets.ModelViewSet):
+    queryset = BillingAddress.objects.all()
+    serializer_class = WishListSerializer
+    permission_classes = (IsAuthenticated, )
+
+    def list(self, request):
+        queryset = BillingAddress.objects.all().filter(owner=request.user)
+        serializer = BillingAddressSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
@@ -112,9 +123,40 @@ class OrderViewSet(viewsets.ModelViewSet):
             print(e)
             return Response({'order_id': 'Order id is invalid'})
 
+    @action(detail=True, methods=['post'], )
+    def checkout(self, request, pk=None):
+        order_query_set = Order.objects.all().filter(owner=request.user, ordered=False)
+        if order_query_set.exists():
+            order = order_query_set[0]
+            street_address = request.data.get('street_address')
+            apartment_address = request.data.get('apartment_address')
+            country = request.data.get('country')
+            state = request.data.get('state')
+            zip_code = request.data.get('zip')
+            amount = request.data.get('amount')
+            billing_address = BillingAddress(
+                owner=self.request.user,
+                street_address=street_address,
+                apartment_address=apartment_address,
+                country=country,
+                state=state,
+                zip=zip_code
+            )
+            billing_address.save()
+            order.amount = amount
+            order.billing_address = billing_address
+            order.ordered = True
+            order.order_date = timezone.now()
+            order.save()
+            return Response({'order': 'Order placed successfully'})
+        else:
+            return Response({'order': 'No active orders found'})
+
     @action(detail=True, methods=['post'],)
     def add_to_cart(self, request, pk=None):
         product_id = request.data.get('product', None)
+        qty = request.data.get('qty', None)
+
         if product_id is None:
             return Response({'product': 'Product is required'})
         try:
@@ -124,14 +166,23 @@ class OrderViewSet(viewsets.ModelViewSet):
                 order = order_query_set[0]
                 if order.products.filter(product=product).exists():
                     order_product = order.products.filter(product=product)[0]
-                    order_product.quantity += 1
+                    if qty is None:
+                        order_product.quantity += 1
+                    else:
+                        order_product.quantity = qty
                     order_product.save()
                 else:
-                    order.products.add(OrderProduct.objects.create(product=product))
+                    if qty is None:
+                        order.products.add(OrderProduct.objects.create(product=product))
+                    else:
+                        order.products.add(OrderProduct.objects.create(product=product, quantity=qty))
             else:
                 ordered_date = timezone.now()
                 order = Order.objects.create(owner=request.self, order_date=ordered_date)
-                order.products.add(OrderProduct.objects.create(product=product))
+                if qty is None:
+                    order.products.add(OrderProduct.objects.create(product=product))
+                else:
+                    order.products.add(OrderProduct.objects.create(product=product, quantity=qty))
             return Response({'product': 'Product added successfully'})
 
         except Exception as e:

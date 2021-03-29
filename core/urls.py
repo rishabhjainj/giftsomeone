@@ -10,6 +10,7 @@ router.register('products', ProductViewSet)
 router.register('categories', CategoryViewSet)
 router.register('labels', LabelViewSet)
 router.register('wishlist', WishListViewSet)
+router.register('billing_address', BillingAddressViewSet)
 
 urlpatterns = router.urls
 # urlpatterns += [

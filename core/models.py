@@ -43,12 +43,27 @@ class OrderProduct(models.Model):
         return f"{self.quantity} of {self.product.title}"
 
 
+class BillingAddress(models.Model):
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='billing_address')
+    street_address = models.CharField(max_length=255)
+    apartment_address = models.CharField(max_length=255)
+    country = models.CharField(max_length=100)
+    state = models.CharField(max_length=100)
+    zip = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.owner.email
+
+
 class Order(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="orders")
     products = models.ManyToManyField(OrderProduct)
     order_date = models.DateTimeField(auto_now=True, blank=True, null=True)
     ordered = models.BooleanField(default=False)
+    amount = models.IntegerField(default=0)
     discount = models.IntegerField()
+    billing_address = models.ForeignKey(BillingAddress, on_delete=models.SET_NULL, blank=True, null=True,
+                                        related_name='billing_address')
 
     def __str__(self):
         return self.owner.email
