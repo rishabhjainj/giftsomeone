@@ -1,8 +1,10 @@
 from django.db import models
 from giftSomeone.helpers import PathAndRenameFile
 from giftSomeone import settings
+from django.db.models.signals import pre_save, post_save
 from django.shortcuts import reverse
 # Create your models here.
+
 
 
 class Category(models.Model):
@@ -30,9 +32,13 @@ class Product(models.Model):
     image = models.ImageField(upload_to=PathAndRenameFile('products'), null=True, blank=True)
     units_in_stock = models.IntegerField()
     description = models.TextField()
+    featured = models.BooleanField(default=False)
 
     def __str__(self):
         return self.title
+
+    def has_inventory(self):
+        return self.units_in_stock > 0
 
 
 class OrderProduct(models.Model):
@@ -55,18 +61,70 @@ class BillingAddress(models.Model):
         return self.owner.email
 
 
+ORDER_STATUS_CHOICES = (
+    ('created', 'Created'),
+    ('stale', 'Stale'),
+    ('paid', 'Paid'),
+    ('shipped', 'Shipped'),
+    ('delivered', 'Delivered'),
+    ('refunded', 'Refunded'),
+)
+
+
 class Order(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="orders")
     products = models.ManyToManyField(OrderProduct)
     order_date = models.DateTimeField(auto_now=True, blank=True, null=True)
     ordered = models.BooleanField(default=False)
-    amount = models.IntegerField(default=0)
+    status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default='created')
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     discount = models.IntegerField()
     billing_address = models.ForeignKey(BillingAddress, on_delete=models.SET_NULL, blank=True, null=True,
                                         related_name='billing_address')
 
     def __str__(self):
         return self.owner.email
+
+    def calculate(self, save=False):
+        if not self.products:
+            return {}
+        prod_sum = 0
+        for order_product in self.products.all():
+            try:
+                product = order_product.product
+                qty = order_product.quantity
+                price = product.price
+                discount = product.discount
+                total_price = price - (price * discount/100)
+                total_price = total_price*qty
+                total_price = float("%.2f" % total_price)
+                prod_sum += total_price
+                prod_sum = float("%.2f" % prod_sum)
+            except Exception as e:
+                print(e)
+        totals = {
+            "amount": prod_sum
+        }
+        for k, v in totals.items():
+            setattr(self, k, v)
+            if save:
+                self.save()
+        return totals
+
+
+def order_pre_save(sender, instance, *args, **kwargs):
+    instance.calculate(save=False)
+
+
+pre_save.connect(order_pre_save, sender=Order)
+
+
+# def order_post_save(sender, instance, created, *args, **kwargs):
+#     if created:
+#         instance.calculate(save=True)
+#
+#
+# post_save.connect(order_post_save, sender=Order)
 
 
 class WishListProduct(models.Model):
@@ -82,4 +140,18 @@ class WishList(models.Model):
 
     def __str__(self):
         return self.owner.email
+
+
+class Transaction(models.Model):
+    made_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="transactions", on_delete=models.CASCADE)
+    made_on = models.DateTimeField(auto_now_add=True)
+    amount = models.IntegerField()
+    transaction_id = models.CharField(unique=True, max_length=100, null=True, blank=True)
+    order = models.ForeignKey(Order, related_name="payment", on_delete=models.CASCADE)
+    checksum = models.CharField(max_length=100, null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if self.transaction_id is None and self.made_on and self.order_id:
+            self.transaction_id = self.made_on.strftime('GIFTSOMEONE%Y%asfORd')+str(self.order_id)
+            return super().save(*args, **kwargs)
 

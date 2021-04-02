@@ -71,6 +71,10 @@ REST_FRAMEWORK = {
 
 REST_USE_JWT = True
 
+TEMPLATE_DIRS = (
+    os.path.join(BASE_DIR, 'core/templates'),
+)
+
 
 TEMPLATES = [
     {
@@ -124,6 +128,8 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/3.1/topics/i18n/
 
+
+
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'Asia/Calcutta'
@@ -143,3 +149,9 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+PAYTM_MERCHANT_ID = 'LgpefW84379456218897'
+PAYTM_SECRET_KEY = 'H7VOaK@S_%KYLhUV'
+PAYTM_WEBSITE = 'WEBSTAGING'
+PAYTM_CHANNEL_ID = 'WEB'
+PAYTM_INDUSTRY_TYPE_ID = 'Retail'

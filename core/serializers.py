@@ -8,6 +8,12 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class TransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Transaction
+        fields = '__all__'
+
+
 class OrderProductSerializer(serializers.ModelSerializer):
     product = ProductSerializer(required=False)
 

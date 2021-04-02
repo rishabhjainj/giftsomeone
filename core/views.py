@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import viewsets
 from rest_framework.response import Response
 from .serializers import *
+from paytmchecksum import PaytmChecksum
 from django.utils import timezone
 
 
@@ -82,6 +83,17 @@ class WishListViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+class TransactionViewSet(viewsets.ModelViewSet):
+    queryset = Transaction.objects.all()
+    serializer_class = TransactionSerializer
+    permission_classes = (IsAuthenticated, )
+
+    def list(self, request):
+        queryset = Transaction.objects.all().filter(made_by=request.user)
+        serializer = TransactionSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+
 class BillingAddressViewSet(viewsets.ModelViewSet):
     queryset = BillingAddress.objects.all()
     serializer_class = WishListSerializer
@@ -115,6 +127,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 else:
                     order_product.quantity -= 1
                     order_product.save()
+                order.save()
                 return Response({'product': 'Product removed successfully'})
 
             else:
@@ -122,6 +135,48 @@ class OrderViewSet(viewsets.ModelViewSet):
         except Exception as e:
             print(e)
             return Response({'order_id': 'Order id is invalid'})
+
+    @action(detail=True, methods=['post'], )
+    def initiate_payment(self, request, pk=None):
+        if request.method == "GET":
+            return TransactionViewSet
+        try:
+            user = request.user
+
+            if user is None:
+                raise ValueError
+
+        except Exception as e:
+            return Response({'user_error': e})
+        order = Order.objects.get(pk=pk)
+        amount = order.amount
+        transaction = Transaction.objects.create(made_by=user, amount=amount, order=order)
+        transaction.save()
+        merchant_key = settings.PAYTM_SECRET_KEY
+        params = (
+            ('MID', settings.PAYTM_MERCHANT_ID),
+            ('ORDER_ID', str(transaction.order_id)),
+            ('CUST_ID', str(transaction.made_by.email)),
+            ('TXN_AMOUNT', str(transaction.amount)),
+            ('CHANNEL_ID', settings.PAYTM_CHANNEL_ID),
+            ('WEBSITE', settings.PAYTM_WEBSITE),
+            ('INDUSTRY_TYPE_ID', settings.PAYTM_INDUSTRY_TYPE_ID),
+            ('CALLBACK_URL', 'http://localhost:9000/api/'),
+        )
+        paytm_params = dict(params)
+        checksum = PaytmChecksum.generateSignature(paytm_params, merchant_key)
+        transaction.checksum = checksum
+        transaction.save()
+        paytm_params['CHECKSUMHASH'] = checksum
+        print('SENT', checksum)
+        # is_verify_signature = PaytmChecksum.verifySignature(paytm_params, merchant_key, checksum)
+        # if is_verify_signature:
+        #     print("CheckSum Matched")
+        # else:
+        #     print("checksum mismatched")
+
+        # return Response({'transaction': 'successful'})
+        return render(request, 'core/redirect.html', context=paytm_params)
 
     @action(detail=True, methods=['post'], )
     def checkout(self, request, pk=None):
@@ -146,7 +201,9 @@ class OrderViewSet(viewsets.ModelViewSet):
             order.amount = amount
             order.billing_address = billing_address
             order.ordered = True
+            order.status = 'paid'
             order.order_date = timezone.now()
+
             order.save()
             return Response({'order': 'Order placed successfully'})
         else:
@@ -183,6 +240,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                     order.products.add(OrderProduct.objects.create(product=product))
                 else:
                     order.products.add(OrderProduct.objects.create(product=product, quantity=qty))
+            order.save()
             return Response({'product': 'Product added successfully'})
 
         except Exception as e:
@@ -196,6 +254,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         queryset = Order.objects.all().filter(owner=request.user.pk)
         serializer = OrderSerializer(queryset, many=True)
         return Response(serializer.data)
+
 
 
 

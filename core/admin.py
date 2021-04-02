@@ -10,4 +10,5 @@ admin.site.register(Label)
 admin.site.register(WishList)
 admin.site.register(WishListProduct)
 admin.site.register(BillingAddress)
+admin.site.register(Transaction)
 
