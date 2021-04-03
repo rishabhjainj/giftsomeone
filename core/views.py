@@ -1,11 +1,13 @@
 from django.shortcuts import render
 from rest_framework.decorators import action
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import viewsets
 from rest_framework.response import Response
 from .serializers import *
 from paytmchecksum import PaytmChecksum
 from django.utils import timezone
+
 
 
 # Create your views here.
@@ -104,6 +106,25 @@ class BillingAddressViewSet(viewsets.ModelViewSet):
         serializer = BillingAddressSerializer(queryset, many=True)
         return Response(serializer.data)
 
+@csrf_exempt
+def callback(request):
+    received_data = dict(request.POST)
+    paytm_params = {}
+    paytm_checksum = received_data['CHECKSUMHASH'][0]
+    for key, value in received_data.items():
+        if key == 'CHECKSUMHASH':
+            paytm_checksum = value[0]
+        else:
+            paytm_params[key] = str(value[0])
+    # Verify checksum
+    is_valid_checksum = PaytmChecksum.verifySignature(paytm_params, settings.PAYTM_SECRET_KEY, paytm_checksum)
+    if is_valid_checksum:
+        received_data['message'] = "Checksum Matched"
+    else:
+        received_data['message'] = "Checksum Mismatched"
+        return render(request, 'core/callback.html', context=received_data)
+    return render(request, 'core/callback.html', context=received_data)
+
 
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
@@ -161,7 +182,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             ('CHANNEL_ID', settings.PAYTM_CHANNEL_ID),
             ('WEBSITE', settings.PAYTM_WEBSITE),
             ('INDUSTRY_TYPE_ID', settings.PAYTM_INDUSTRY_TYPE_ID),
-            ('CALLBACK_URL', 'http://localhost:9000/api/'),
+            ('CALLBACK_URL', 'http://localhost:9000/api/callback/'),
         )
         paytm_params = dict(params)
         checksum = PaytmChecksum.generateSignature(paytm_params, merchant_key)
@@ -220,6 +241,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             product = Product.objects.get(pk=product_id)
             order_query_set = Order.objects.all().filter(owner=request.user, ordered=False)
             if order_query_set.exists():
+                print("exitsts")
                 order = order_query_set[0]
                 if order.products.filter(product=product).exists():
                     order_product = order.products.filter(product=product)[0]
@@ -235,7 +257,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                         order.products.add(OrderProduct.objects.create(product=product, quantity=qty))
             else:
                 ordered_date = timezone.now()
-                order = Order.objects.create(owner=request.self, order_date=ordered_date)
+                order = Order.objects.create(owner=request.user, order_date=ordered_date)
                 if qty is None:
                     order.products.add(OrderProduct.objects.create(product=product))
                 else:

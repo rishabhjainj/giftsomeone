@@ -1,6 +1,8 @@
 from django.conf.urls import url, include
+from django.conf.urls import re_path
 from rest_framework import routers
 from django.conf.urls import re_path
+from django.urls import path
 from .views import *
 
 from users.views import UserViewSet
@@ -14,8 +16,10 @@ router.register('labels', LabelViewSet)
 router.register('wishlist', WishListViewSet)
 router.register('billing_address', BillingAddressViewSet)
 router.register('transactions', TransactionViewSet)
+# router.register('callback', Callback.as_view(), basename='callback')
+
 urlpatterns = router.urls
 
-# urlpatterns += [
-#     url(r'^/?$, initiate_payment, name='initiate_payment'),
-# ]
+urlpatterns = [
+    path('callback/', callback, name="Callback"),
+]

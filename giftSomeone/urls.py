@@ -32,6 +32,7 @@ urlpatterns = [
     path(r'admin/', admin.site.urls),
     re_path('api/', include(router.urls)),
     url(r'^login/', obtain_jwt_token),
+    path(r'api/', include('core.urls'))
     #include function allows referencing other URLConfs
 ]
 

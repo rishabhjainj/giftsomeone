@@ -78,7 +78,7 @@ class Order(models.Model):
     ordered = models.BooleanField(default=False)
     status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default='created')
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    discount = models.IntegerField()
+    discount = models.IntegerField(default=0)
     billing_address = models.ForeignKey(BillingAddress, on_delete=models.SET_NULL, blank=True, null=True,
                                         related_name='billing_address')
 
@@ -86,6 +86,8 @@ class Order(models.Model):
         return self.owner.email
 
     def calculate(self, save=False):
+        if not self.id:
+            return {}
         if not self.products:
             return {}
         prod_sum = 0
