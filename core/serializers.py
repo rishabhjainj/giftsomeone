@@ -9,6 +9,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
 
 class TransactionSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Transaction
         fields = '__all__'
@@ -46,6 +47,7 @@ class LabelsSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     products = OrderProductSerializer(many=True, required=False)
+    payment = TransactionSerializer(many=True, required=False)
     billing_address = BillingAddressSerializer(required=False)
 
     class Meta:

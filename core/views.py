@@ -166,38 +166,31 @@ class OrderViewSet(viewsets.ModelViewSet):
 
             if user is None:
                 raise ValueError
-
+            order = Order.objects.get(pk=pk)
+            amount = order.amount
+            transaction = Transaction.objects.create(made_by=request.user, amount=amount, order=order)
+            transaction.save()
+            merchant_key = settings.PAYTM_SECRET_KEY
+            params = (
+               ('MID', settings.PAYTM_MERCHANT_ID),
+               ('ORDER_ID', str(transaction.order_id)),
+               ('CUST_ID', str(transaction.made_by.email)),
+               ('TXN_AMOUNT', str(transaction.amount)),
+               ('CHANNEL_ID', settings.PAYTM_CHANNEL_ID),
+               ('WEBSITE', settings.PAYTM_WEBSITE),
+               ('INDUSTRY_TYPE_ID', settings.PAYTM_INDUSTRY_TYPE_ID),
+               ('CALLBACK_URL', 'http://localhost:9000/api/callback/'),
+            )
+            paytm_params = dict(params)
+            checksum = PaytmChecksum.generateSignature(paytm_params, merchant_key)
+            transaction.checksum = checksum
+            transaction.save()
+            paytm_params['CHECKSUMHASH'] = checksum
+            print('SENT', checksum)
+            return render(request, 'core/redirect.html', context=paytm_params)
         except Exception as e:
-            return Response({'user_error': e})
-        order = Order.objects.get(pk=pk)
-        amount = order.amount
-        transaction = Transaction.objects.create(made_by=user, amount=amount, order=order)
-        transaction.save()
-        merchant_key = settings.PAYTM_SECRET_KEY
-        params = (
-            ('MID', settings.PAYTM_MERCHANT_ID),
-            ('ORDER_ID', str(transaction.order_id)),
-            ('CUST_ID', str(transaction.made_by.email)),
-            ('TXN_AMOUNT', str(transaction.amount)),
-            ('CHANNEL_ID', settings.PAYTM_CHANNEL_ID),
-            ('WEBSITE', settings.PAYTM_WEBSITE),
-            ('INDUSTRY_TYPE_ID', settings.PAYTM_INDUSTRY_TYPE_ID),
-            ('CALLBACK_URL', 'http://localhost:9000/api/callback/'),
-        )
-        paytm_params = dict(params)
-        checksum = PaytmChecksum.generateSignature(paytm_params, merchant_key)
-        transaction.checksum = checksum
-        transaction.save()
-        paytm_params['CHECKSUMHASH'] = checksum
-        print('SENT', checksum)
-        # is_verify_signature = PaytmChecksum.verifySignature(paytm_params, merchant_key, checksum)
-        # if is_verify_signature:
-        #     print("CheckSum Matched")
-        # else:
-        #     print("checksum mismatched")
-
-        # return Response({'transaction': 'successful'})
-        return render(request, 'core/redirect.html', context=paytm_params)
+           print(e)
+           return Response({'payments': 'error'})
 
     @action(detail=True, methods=['post'], )
     def checkout(self, request, pk=None):

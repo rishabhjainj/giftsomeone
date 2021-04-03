@@ -3,6 +3,8 @@ from giftSomeone.helpers import PathAndRenameFile
 from giftSomeone import settings
 from django.db.models.signals import pre_save, post_save
 from django.shortcuts import reverse
+import binascii
+import os
 # Create your models here.
 
 
@@ -147,13 +149,20 @@ class WishList(models.Model):
 class Transaction(models.Model):
     made_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="transactions", on_delete=models.CASCADE)
     made_on = models.DateTimeField(auto_now_add=True)
-    amount = models.IntegerField()
+    amount = models.IntegerField(default=0)
     transaction_id = models.CharField(unique=True, max_length=100, null=True, blank=True)
     order = models.ForeignKey(Order, related_name="payment", on_delete=models.CASCADE)
     checksum = models.CharField(max_length=100, null=True, blank=True)
 
     def save(self, *args, **kwargs):
-        if self.transaction_id is None and self.made_on and self.order_id:
-            self.transaction_id = self.made_on.strftime('GIFTSOMEONE%Y%asfORd')+str(self.order_id)
-            return super().save(*args, **kwargs)
+        print("saving")
+        if self.transaction_id is None:
+            try:
+                self.transaction_id = binascii.hexlify(os.urandom(32)).decode()+str(self.order)
+                # print(self.transaction_id)
+                return super().save(*args, **kwargs)
+            except Exception as e:
+                print(e)
+        else:
+            print("error")
 
