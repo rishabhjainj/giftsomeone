@@ -106,11 +106,18 @@ class BillingAddressViewSet(viewsets.ModelViewSet):
         serializer = BillingAddressSerializer(queryset, many=True)
         return Response(serializer.data)
 
+
 @csrf_exempt
 def callback(request):
     received_data = dict(request.POST)
     paytm_params = {}
+    print("recieved data:")
+    print(request.POST)
     paytm_checksum = received_data['CHECKSUMHASH'][0]
+    # transaction_id = received_data['TRANSACTION_ID'][0]
+    # transaction_query = Transaction.objects.filter(transaction_id=transaction_id)
+    # transaction = transaction_query[0]
+
     for key, value in received_data.items():
         if key == 'CHECKSUMHASH':
             paytm_checksum = value[0]
@@ -119,10 +126,15 @@ def callback(request):
     # Verify checksum
     is_valid_checksum = PaytmChecksum.verifySignature(paytm_params, settings.PAYTM_SECRET_KEY, paytm_checksum)
     if is_valid_checksum:
+        # transaction.status = "Success"
+        # transaction.save()
         received_data['message'] = "Checksum Matched"
     else:
+        # transaction.status = "Failed"
+        # transaction.save()
         received_data['message'] = "Checksum Mismatched"
         return render(request, 'core/callback.html', context=received_data)
+
     return render(request, 'core/callback.html', context=received_data)
 
 
@@ -186,6 +198,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             transaction.checksum = checksum
             transaction.save()
             paytm_params['CHECKSUMHASH'] = checksum
+            print(paytm_params)
             print('SENT', checksum)
             return render(request, 'core/redirect.html', context=paytm_params)
         except Exception as e:
