@@ -5,8 +5,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import viewsets
 from rest_framework.response import Response
 from .serializers import *
+from django.contrib.auth import authenticate, login as auth_login
 from paytmchecksum import PaytmChecksum
 from django.utils import timezone
+from rest_framework.decorators import api_view, renderer_classes
+from rest_framework.renderers import JSONRenderer, TemplateHTMLRenderer
+
 
 
 # Create your views here.
@@ -33,6 +37,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                 wishList = wishlist_query_set[0]
                 wishlist_product_queryset = wishList.products.filter(product=product)
                 if wishlist_product_queryset.exists():
+                    print(product.id)
                     return Response({'wishList': 'Product already in wishlist'})
                 else:
                     wishListProduct = WishListProduct.objects.create(product=product)
@@ -115,6 +120,49 @@ class BillingAddressViewSet(viewsets.ModelViewSet):
         serializer = BillingAddressSerializer(queryset, many=True)
         return Response(serializer.data)
 
+@csrf_exempt
+@api_view(('POST', 'GET',))
+def initiate_payment(request):
+    if request.method == "GET":
+        return render(request, 'core/pay.html')
+    order_id = request.POST['order_id']
+    if request.method == "GET":
+        return TransactionViewSet
+    try:
+        email = request.POST['email']
+        password = request.POST['password']
+        user = authenticate(request, email=email, password=password)
+
+        if user is None:
+            raise ValueError
+        auth_login(request=request, user=user)
+        order = Order.objects.get(pk=order_id)
+        amount = order.amount
+        transaction = Transaction.objects.create(made_by=request.user, amount=amount, order=order)
+        transaction.save()
+        merchant_key = settings.PAYTM_SECRET_KEY
+        params = (
+           ('MID', settings.PAYTM_MERCHANT_ID),
+           ('ORDER_ID', str(transaction.order_id)),
+           ('CUST_ID', str(transaction.made_by.email)),
+           ('TXN_AMOUNT', str(transaction.amount)),
+           ('CHANNEL_ID', settings.PAYTM_CHANNEL_ID),
+           ('WEBSITE', settings.PAYTM_WEBSITE),
+           ('INDUSTRY_TYPE_ID', settings.PAYTM_INDUSTRY_TYPE_ID),
+           ('CALLBACK_URL', 'http://localhost:8002/api/callback/'),
+        )
+        paytm_params = dict(params)
+        checksum = PaytmChecksum.generateSignature(paytm_params, merchant_key)
+        transaction.checksum = checksum
+        transaction.save()
+        paytm_params['CHECKSUMHASH'] = checksum
+        print(paytm_params)
+        print('SENT', checksum)
+        return render(request, 'core/redirect.html', context=paytm_params)
+    except Exception as e:
+       print("error")
+       print(e)
+       return Response({'payments': 'error'})
 
 @csrf_exempt
 def callback(request):
@@ -178,41 +226,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             print(e)
             return Response({'order_id': 'Order id is invalid'})
 
-    @action(detail=True, methods=['post'], )
-    def initiate_payment(self, request, pk=None):
-        if request.method == "GET":
-            return TransactionViewSet
-        try:
-            user = request.user
-
-            if user is None:
-                raise ValueError
-            order = Order.objects.get(pk=pk)
-            amount = order.amount
-            transaction = Transaction.objects.create(made_by=request.user, amount=amount, order=order)
-            transaction.save()
-            merchant_key = settings.PAYTM_SECRET_KEY
-            params = (
-               ('MID', settings.PAYTM_MERCHANT_ID),
-               ('ORDER_ID', str(transaction.order_id)),
-               ('CUST_ID', str(transaction.made_by.email)),
-               ('TXN_AMOUNT', str(transaction.amount)),
-               ('CHANNEL_ID', settings.PAYTM_CHANNEL_ID),
-               ('WEBSITE', settings.PAYTM_WEBSITE),
-               ('INDUSTRY_TYPE_ID', settings.PAYTM_INDUSTRY_TYPE_ID),
-               ('CALLBACK_URL', 'http://localhost:9000/api/callback/'),
-            )
-            paytm_params = dict(params)
-            checksum = PaytmChecksum.generateSignature(paytm_params, merchant_key)
-            transaction.checksum = checksum
-            transaction.save()
-            paytm_params['CHECKSUMHASH'] = checksum
-            print(paytm_params)
-            print('SENT', checksum)
-            return render(request, 'core/redirect.html', context=paytm_params)
-        except Exception as e:
-           print(e)
-           return Response({'payments': 'error'})
 
     @action(detail=True, methods=['post'], )
     def checkout(self, request, pk=None):
@@ -304,6 +317,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         queryset = Order.objects.all().filter(owner=request.user.pk)
         serializer = OrderSerializer(queryset, many=True)
         return Response(serializer.data)
+
 
 
 
