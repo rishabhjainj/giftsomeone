@@ -2,7 +2,24 @@ from rest_framework import serializers
 from .models import *
 
 
+class CategoriesSerializerForProducts(serializers.ModelSerializer):
+
+    class Meta:
+        model = Category
+        fields = '__all__'
+
+
+class LabelSerializerForProducts(serializers.ModelSerializer):
+
+    class Meta:
+        model = Label
+        fields = '__all__'
+
+
 class ProductSerializer(serializers.ModelSerializer):
+    category = CategoriesSerializerForProducts()
+    label = LabelSerializerForProducts()
+
     class Meta:
         model = Product
         fields = '__all__'
@@ -39,6 +56,7 @@ class BillingAddressSerializer(serializers.ModelSerializer):
 
 class LabelsSerializer(serializers.ModelSerializer):
     products = ProductSerializer(many=True, required=False)
+
 
     class Meta:
         model = Label

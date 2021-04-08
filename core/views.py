@@ -9,12 +9,17 @@ from paytmchecksum import PaytmChecksum
 from django.utils import timezone
 
 
-
 # Create your views here.
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     permission_classes = (IsAuthenticated,)
+
+    @action(detail=True, methods=['get'], )
+    def get_wishlist(self, request, pk=None):
+        queryset = WishList.objects.all().filter(owner=request.user.pk)
+        serializer = WishListSerializer(queryset, many=True)
+        return Response(serializer.data)
 
     @action(detail=True, methods=['post'], )
     def add_to_wishlist(self, request, pk=None):
@@ -26,9 +31,13 @@ class ProductViewSet(viewsets.ModelViewSet):
             wishlist_query_set = WishList.objects.all().filter(owner=request.user)
             if wishlist_query_set.exists():
                 wishList = wishlist_query_set[0]
-                wishListProduct = WishListProduct.objects.create(product=product)
-                wishList.products.add(wishListProduct)
-                wishList.save()
+                wishlist_product_queryset = wishList.products.filter(product=product)
+                if wishlist_product_queryset.exists():
+                    return Response({'wishList': 'Product already in wishlist'})
+                else:
+                    wishListProduct = WishListProduct.objects.create(product=product)
+                    wishList.products.add(wishListProduct)
+                    wishList.save()
             else:
                 wishList = WishList.objects.create(owner=request.user)
                 wishListProduct = WishListProduct.objects.create(product=product)
@@ -236,11 +245,17 @@ class OrderViewSet(viewsets.ModelViewSet):
         else:
             return Response({'order': 'No active orders found'})
 
+    @action(detail=True, methods=['get'], )
+    def get_cart(self, request, pk=None):
+        queryset = Order.objects.all().filter(owner=request.user.pk, ordered=False)
+        serializer = OrderSerializer(queryset, many=True)
+        return Response(serializer.data)
+
     @action(detail=True, methods=['post'],)
     def add_to_cart(self, request, pk=None):
         product_id = request.data.get('product', None)
         qty = request.data.get('qty', None)
-
+        print(qty)
         if product_id is None:
             return Response({'product': 'Product is required'})
         try:
@@ -253,8 +268,15 @@ class OrderViewSet(viewsets.ModelViewSet):
                     order_product = order.products.filter(product=product)[0]
                     if qty is None:
                         order_product.quantity += 1
+                    elif qty == 0:
+                        print("deleting")
+                        OrderProduct.objects.all().filter(pk=order_product.id).delete()
+                        order.save()
+                        return Response({'cart': 'Product removed'})
                     else:
-                        order_product.quantity = qty
+                        print("not zero")
+                        order_product.quantity += qty
+                    print(order_product.quantity)
                     order_product.save()
                 else:
                     if qty is None:
