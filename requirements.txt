@@ -98,9 +98,6 @@ pycodestyle==2.6.0
 pycosat==0.6.3
 pycrypto==2.6.1
 pycryptodome==3.10.1
-pycurl==7.43.0.5
-pyflakes==2.2.0
-Pygments==2.6.1
 PyJWT==1.7.1
 pyodbc===4.0.0-unsupported
 
