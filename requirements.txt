@@ -82,8 +82,6 @@ path==13.1.0
 pathlib2==2.3.5
 pathtools==0.1.2
 patsy==0.5.1
-paytm-pg==1.0.9
-paytmchecksum==1.7.0
 pep8==1.7.1
 pexpect==4.8.0
 pickleshare==0.7.5
