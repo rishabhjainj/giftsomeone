@@ -96,6 +96,8 @@ psutil==5.7.0
 pycodestyle==2.6.0
 pycosat==0.6.3
 pycrypto==2.6.1
+paytm-pg==1.0.9
+paytmchecksum==1.7.0
 pycryptodome==3.10.1
 PyJWT==1.7.1
 pytest==5.4.3
